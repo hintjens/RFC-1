@@ -20,39 +20,36 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 The following ABNF grammar defines the XRAP/ZMTP protocol:
 
     xrap-zmtp       = *( create | retrieve | update | delete )
-
+    
     create          = C:POST ( S:POST-OK / S:ERROR )
-
     retrieve        = C:GET ( S:GET-OK / S:GET-EMPTY / S:ERROR )
-
     update          = C:PUT ( S:PUT-OK / S:ERROR )
-
     delete          = C:DELETE ( S:DELETE-OK / S:ERROR )
 
     ;   Create a new, dynamically named resource in some parent
-    POST            = signature %x01 parent content
+    POST            = signature %x01 urn content
     signature       = %xAA %xA5
-    parent          = string        ; Schema/type/name
-    string          = size *VCHAR
-    size            = OCTET
+    urn             = schema type name
+    schema          = string        
+    type            = string
+    name            = string
     content         = content-type content-body
     content-type    = string        ; Content type
-    content-body    = *OCTET        ; Resource spec, ZeroMQ frame
-
+    content_body    = longstr       ; New resource specification
+    
     ;   Success response for POST
     POST-OK         = signature %x02 status-code location
-                    etag date-modified content
-    status-code     = 2OCTET        ; Response status code 2xx
-    location        = string        ; Schema/type/name
+                      etag date-modified content
+    status-code     = number-2      ; Response status code 2xx
+    location        = urn           ; Created resource
     etag            = string        ; Opaque hash tag
-    date-modified   = 8OCTET        ; Date and time modified
+    date-modified   = number-8      ; Date and time modified
 
     ;   Retrieve a known resource
-    GET             = signature %x03 resource
-                    if-modified-since if-none-match
-                    content-type
-    resource        = string        ; Schema/type/name
-    if-modified-since = 8OCTET      ; GET if more recent
+    GET             = signature %x03 urn
+                      if-modified-since if-none-match
+                      content-type
+    if-modified-since = number-8    ; GET if more recent
     if-none-match   = string        ; GET if changed
 
     ;   Success response for GET
@@ -62,19 +59,19 @@ The following ABNF grammar defines the XRAP/ZMTP protocol:
     GET-EMPTY       = signature %x05 status code
 
     ;   Update a known resource.
-    PUT             = signature %x06 resource
-                    if-unmodified-since if-match
-                    content
-    if-unmodified-since = 8OCTET    ; Update if same date
+    PUT             = signature %x06 urn
+                      if-unmodified-since if-match
+                      content
+    if-unmodified-since = number-8  ; Update if same date
     if-match        = string        ; Update if same ETag
 
     ;   Success response for PUT
     PUT-OK          = signature %x07 status-code location
-                    etag date-modified
+                      etag date-modified
 
     ;   Remove a known resource
-    DELETE          = signature %x08 resource
-                    if-unmodified-since if-match
+    DELETE          = signature %x08 urn
+                      if-unmodified-since if-match
 
     ;   Success response for DELETE
     DELETE-OK       = signature %x09 status-code
@@ -82,6 +79,16 @@ The following ABNF grammar defines the XRAP/ZMTP protocol:
     ;   Error response for any request, 4xx or 5xx
     ERROR           = signature %x10 status-code status-text
     status-text     = string        ; Response status text
+
+    ; Numbers are unsigned integers in network byte order
+    number-1        = 1OCTET
+    number-2        = 2OCTET
+    number-4        = 4OCTET
+    number-8        = 8OCTET
+
+    ; Strings are always length + text contents
+    string          = number-1 *VCHAR
+    longstr         = number-4 *VCHAR
 
 ## ZeroMQ Socket Types
 
